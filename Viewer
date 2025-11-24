@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Client Ortho Viewer — Unitos</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8;--glass: rgba(255,255,255,0.03)}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#071026 0%, #071c2a 100%);color:#e6eef6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .frame{width:100%;max-width:1100px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:14px;box-shadow:0 8px 30px rgba(2,6,23,0.7);overflow:hidden;display:grid;grid-template-columns:380px 1fr}
+    @media (max-width:880px){.frame{grid-template-columns:1fr} }
+
+    /* left panel */
+    .panel{padding:28px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));border-right:1px solid rgba(255,255,255,0.03)}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:48px;height:48px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:700}
+    h1{margin:12px 0 6px;font-size:18px}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    form{margin-top:22px;display:flex;flex-direction:column;gap:12px}
+    label{font-size:13px;color:var(--muted)}
+    input[type=text],input[type=password]{padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;font-size:14px}
+    button{margin-top:6px;padding:10px 12px;border-radius:10px;border:0;background:var(--accent);color:#032;cursor:pointer;font-weight:600}
+    .muted{font-size:12px;color:var(--muted);margin-top:8px}
+    .small{font-size:12px;color:var(--muted)}
+
+    /* viewer area */
+    .viewer{padding:18px;display:flex;flex-direction:column;gap:12px}
+    .topbar{display:flex;align-items:center;justify-content:space-between}
+    .clientName{font-weight:700}
+    .badge{background:var(--glass);padding:6px 10px;border-radius:999px;font-size:13px;color:var(--muted)}
+    .canvas{flex:1;display:flex;align-items:center;justify-content:center;border-radius:8px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));border:1px solid rgba(255,255,255,0.03)}
+    img.ortho{max-width:100%;height:auto;display:block}
+    .controls{display:flex;gap:8px;align-items:center}
+    .btn-ghost{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit;cursor:pointer}
+
+    .note{font-size:12px;color:var(--muted)}
+    .hidden{display:none}
+
+    footer{font-size:12px;color:var(--muted);padding:12px 18px;text-align:center;border-top:1px solid rgba(255,255,255,0.02)}
+  </style>
+</head>
+<body>
+  <div class="frame" role="application">
+    <aside class="panel" aria-label="Login panel">
+      <div class="brand">
+        <div class="logo">UT</div>
+        <div>
+          <h1>Unitos — Ortho Viewer</h1>
+          <p class="lead">Secure client delivery of orthophotos (demo).</p>
+        </div>
+      </div>
+
+      <form id="loginForm" aria-label="Client login" autocomplete="off">
+        <div>
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" required value="client">
+        </div>
+        <div>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" required value="secret123">
+        </div>
+        <button type="submit" id="loginBtn">View Ortho Photo</button>
+        <div class="muted">Demo credentials pre-filled. Replace with client's username & password before sending.</div>
+      </form>
+
+      <div id="status" class="muted" style="margin-top:12px">Status: <span id="statusText">Logged out</span></div>
+
+      <hr style="margin:18px 0;border:0;border-top:1px solid rgba(255,255,255,0.02)">
+
+      <div>
+        <div class="small"><strong>Instructions (quick):</strong></div>
+        <ul style="margin:8px 0 0 18px;color:var(--muted);font-size:13px">
+          <li>Replace <code>ortho.jpg</code> with your orthophoto file (same folder).</li>
+          <li>Change default credentials inside this HTML before sending to client.</li>
+          <li>This demo uses client-side auth — not production secure. Use server-side auth for real clients.</li>
+        </ul>
+      </div>
+
+    </aside>
+
+    <main class="viewer" aria-live="polite">
+      <div class="topbar">
+        <div>
+          <div class="clientName" id="clientLabel">Client: —</div>
+          <div class="note">File: <span id="fileLabel">ortho.jpg</span></div>
+        </div>
+        <div class="controls">
+          <div class="badge" id="loginBadge">Not signed in</div>
+          <button class="btn-ghost" id="downloadBtn" disabled>Download</button>
+          <button class="btn-ghost" id="logoutBtn" disabled>Logout</button>
+        </div>
+      </div>
+
+      <div class="canvas" id="canvasArea">
+        <div style="text-align:center;color:var(--muted)" id="placeholder">
+          <div style="font-size:48px;">🛰️</div>
+          <div>Select "View Ortho Photo" to open the secure viewer.</div>
+        </div>
+        <img src="ortho.jpg" alt="Orthophoto" id="orthoImg" class="ortho hidden">
+      </div>
+
+      <footer>
+        Delivered by Unitos Trading Pvt Limited — For demo only. Use HTTPS & server-side checks in production.
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // ---- Configuration (edit before sending) ----
+    const CREDENTIALS = { username: 'client', password: 'secret123' };
+    const CLIENT_NAME = 'LEA Associates South Asia Pvt. Ltd.'; // customize
+    const ORTHO_FILENAME = 'ortho.jpg'; // file name to place alongside this HTML
+    // --------------------------------------------
+
+    const loginForm = document.getElementById('loginForm');
+    const statusText = document.getElementById('statusText');
+    const loginBadge = document.getElementById('loginBadge');
+    const orthoImg = document.getElementById('orthoImg');
+    const placeholder = document.getElementById('placeholder');
+    const clientLabel = document.getElementById('clientLabel');
+    const fileLabel = document.getElementById('fileLabel');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    fileLabel.textContent = ORTHO_FILENAME;
+
+    function setLoggedIn(username){
+      sessionStorage.setItem('ortho_logged_in', '1');
+      sessionStorage.setItem('ortho_user', username);
+      statusText.textContent = 'Logged in as ' + username;
+      loginBadge.textContent = 'Signed in';
+      clientLabel.textContent = 'Client: ' + CLIENT_NAME;
+      downloadBtn.disabled = false;
+      logoutBtn.disabled = false;
+      showImage();
+    }
+    function setLoggedOut(){
+      sessionStorage.removeItem('ortho_logged_in');
+      sessionStorage.removeItem('ortho_user');
+      statusText.textContent = 'Logged out';
+      loginBadge.textContent = 'Not signed in';
+      clientLabel.textContent = 'Client: —';
+      downloadBtn.disabled = true;
+      logoutBtn.disabled = true;
+      hideImage();
+    }
+
+    function hideImage(){
+      orthoImg.classList.add('hidden');
+      placeholder.style.display = 'block';
+    }
+    function showImage(){
+      // attempt to load image; if it fails, show a message
+      orthoImg.src = ORTHO_FILENAME + '?v=' + Date.now();
+      orthoImg.onload = ()=>{
+        orthoImg.classList.remove('hidden');
+        placeholder.style.display = 'none';
+      }
+      orthoImg.onerror = ()=>{
+        placeholder.innerHTML = '<div style="color:var(--muted)">Orthophoto not found: <strong>'+ORTHO_FILENAME+'</strong><br>Place the file in the same folder as this HTML or check filename.</div>';
+        orthoImg.classList.add('hidden');
+      }
+    }
+
+    // On load, respect session
+    window.addEventListener('load', ()=>{
+      if(sessionStorage.getItem('ortho_logged_in')){
+        setLoggedIn(sessionStorage.getItem('ortho_user'));
+      } else setLoggedOut();
+    });
+
+    loginForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value;
+
+      // Simple client-side check (demo). Replace with server-side for production.
+      if(u === CREDENTIALS.username && p === CREDENTIALS.password){
+        setLoggedIn(u);
+        alert('Access granted — ortho viewer unlocked.');
+      } else {
+        statusText.textContent = 'Invalid credentials';
+        loginBadge.textContent = 'Auth failed';
+        alert('Invalid username or password');
+      }
+    });
+
+    logoutBtn.addEventListener('click', ()=>{
+      setLoggedOut();
+      alert('You have been logged out.');
+    });
+
+    downloadBtn.addEventListener('click', ()=>{
+      // trigger download of ortho file
+      const a = document.createElement('a');
+      a.href = ORTHO_FILENAME;
+      a.download = ORTHO_FILENAME;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+
+    // accessibility: allow Enter to submit from password
+    document.getElementById('password').addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter') loginForm.dispatchEvent(new Event('submit'));
+    });
+
+    // Prevent directory listing in some file servers by rewriting path (best-effort)
+    // Note: Not a security feature.
+  </script>
+</body>
+</html>
